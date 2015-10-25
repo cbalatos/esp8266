@@ -14,10 +14,13 @@ int statusCode;
 int workingMode = 1; //0:is client to AP; 1:is AP
 
 //node application
-const char* host = "192.168.1.79";
+char* host = "               ";
 //the pin where the led is connected
 const int pin        = 13;
 const int inputPin   = 12;
+
+//server ip start point in eeprom
+const int srvIpStartPos = 495;
 
 void setup() {
   pinMode(pin, OUTPUT);
@@ -42,8 +45,14 @@ void setup() {
     {
       epass += char(EEPROM.read(i));
     }
-  Serial.print("PASS: ");
-  Serial.println(epass);  
+
+ for (int i = 0; i < 15; ++i)
+    {
+        Serial.println(char(EEPROM.read(srvIpStartPos+i)));
+      host[i]= char(EEPROM.read(srvIpStartPos+i));
+    }
+  Serial.print("host: ");
+  Serial.println(host);  
   if ( esid.length() > 1 ) {
       WiFi.begin(esid.c_str(), epass.c_str());
       if (testWifi()) {
@@ -149,7 +158,8 @@ void createWebServer(int webtype)
     server.on("/setting", []() {
         String qsid = server.arg("ssid");
         String qpass = server.arg("pass");
-        if (qsid.length() > 0 && qpass.length() > 0) {
+        String qsrvIp = server.arg("srvIp");
+        if (qsid.length() > 0 && qpass.length() > 0 && qsrvIp.length()>0) {
           Serial.println("clearing eeprom");
           for (int i = 0; i < 96; ++i) { EEPROM.write(i, 0); }
           //Serial.println(qsid);
@@ -170,6 +180,14 @@ void createWebServer(int webtype)
               EEPROM.write(32+i, qpass[i]);
               //Serial.print("Wrote: ");
               //Serial.println(qpass[i]); 
+            }  
+          Serial.println("writing eeprom srvIp:"); 
+         //clear contents
+          for (int i = srvIpStartPos; i < srvIpStartPos+15; ++i) { EEPROM.write(i, 0); }
+          for (int i = 0; i < qsrvIp.length(); ++i)
+            {
+              EEPROM.write(srvIpStartPos+i, qsrvIp[i]);
+
             }    
           EEPROM.commit();
           content = "{\"Success\":\"saved to eeprom... reset to boot into new wifi\"}";
@@ -195,6 +213,21 @@ void createWebServer(int webtype)
       for (int i = 0; i < 96; ++i) { EEPROM.write(i, 0); }
       EEPROM.commit();
     });
+    server.on("/setting", []() {
+        String qsrvIp = server.arg("srvIp");
+        if (qsrvIp.length()>0) {
+          Serial.println("writing eeprom srvIp:"); 
+          //clear contents
+          for (int i = srvIpStartPos; i < srvIpStartPos+15; ++i) { EEPROM.write(i, 0); }
+          for (int i = 0; i < qsrvIp.length(); ++i)
+            {
+              EEPROM.write(srvIpStartPos+i, qsrvIp[i]);
+
+            }   
+          EEPROM.commit();
+          server.send(20, "application/json", "{\"Success\":\"new srv ip is saved to eeprom... \"}");
+        } 
+    });   
   }
 }
 
@@ -202,6 +235,7 @@ void loop() {
   if (workingMode==1){
     server.handleClient();
   }else {
+    server.handleClient();
     delay(5000);
   
     Serial.print("connecting to ");

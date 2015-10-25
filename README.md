@@ -4,6 +4,6 @@ appBoot is a demo application for setting and storing an AP ssid and password wh
 
 # use
 Locate and connect to the network named 'test'.
-Use 192.168.4.1/setting?ssid=xxxx&pass=jkd to save external AP credentials.
+Use 192.168.4.1/setting?ssid=xxxx&pass=jkd&&srcIp=serverIp to save external AP credentials and configure the ip of the  server to connect.
 
 

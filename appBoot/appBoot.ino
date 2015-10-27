@@ -253,7 +253,8 @@ void createWebServer(int webtype)
     server.on("/whoareyou", [](){
         server.send(200, "application/json", "{\"espId\":"+espId+
                                            ", \"clientId\":"+clientId+
-                                           ", \"clientVersion\":"+clientVer+"}");
+                                           ", \"clientVersion\":"+clientVer+
+                                           ", \"applServer\":\""+String(host)+"\"}");
     });
   }
 }

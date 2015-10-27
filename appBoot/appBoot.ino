@@ -15,12 +15,16 @@ int workingMode = 1; //0:is client to AP; 1:is AP
 
 //node application
 char* host = "               ";
+String espId;
+int clientId = 1;
+int clientVer = 0;
 //the pin where the led is connected
 const int pin        = 13;
 const int inputPin   = 12;
 
 //server ip start point in eeprom
 const int srvIpStartPos = 495;
+const int espIdStartPos = 492;
 
 void setup() {
   pinMode(pin, OUTPUT);
@@ -45,14 +49,19 @@ void setup() {
     {
       epass += char(EEPROM.read(i));
     }
-
+ for (int i = 0; i < 3; ++i)
+    {
+      espId+= char(EEPROM.read(espIdStartPos+i));
+    }
  for (int i = 0; i < 15; ++i)
     {
-        Serial.println(char(EEPROM.read(srvIpStartPos+i)));
       host[i]= char(EEPROM.read(srvIpStartPos+i));
     }
-  Serial.print("host: ");
-  Serial.println(host);  
+  //Serial.println("host: "+ String(host));
+  espId = espId.substring(0,3);
+ // Serial.println("espId: "+espId);
+    
+  
   if ( esid.length() > 1 ) {
       WiFi.begin(esid.c_str(), epass.c_str());
       if (testWifi()) {
@@ -79,7 +88,6 @@ bool testWifi(void) {
 } 
 
 void launchWeb(int webtype) {
-  Serial.println("");
   Serial.println("WiFi connected");
   Serial.print("Local IP: ");
   Serial.println(WiFi.localIP());
@@ -88,7 +96,7 @@ void launchWeb(int webtype) {
   createWebServer(webtype);
   // Start the server
   server.begin();
-  Serial.println("Server started"); 
+  Serial.println("Server started at "+ String(host)); 
 }
 
 void setupAP(void) {
@@ -159,7 +167,8 @@ void createWebServer(int webtype)
         String qsid = server.arg("ssid");
         String qpass = server.arg("pass");
         String qsrvIp = server.arg("srvIp");
-        if (qsid.length() > 0 && qpass.length() > 0 && qsrvIp.length()>0) {
+        String qespId = server.arg("espId");
+        if (qsid.length() > 0 && qpass.length() > 0 && qsrvIp.length()>0 && qespId.length()>0) {
           Serial.println("clearing eeprom");
           for (int i = 0; i < 96; ++i) { EEPROM.write(i, 0); }
           //Serial.println(qsid);
@@ -188,7 +197,13 @@ void createWebServer(int webtype)
             {
               EEPROM.write(srvIpStartPos+i, qsrvIp[i]);
 
-            }    
+            }   
+          for (int i = espIdStartPos; i < espIdStartPos+3; ++i) { EEPROM.write(i, 0); }
+          for (int i = 0; i < qespId.length(); ++i)
+            {
+              EEPROM.write(espIdStartPos+i, qespId[i]);
+
+            }            
           EEPROM.commit();
           content = "{\"Success\":\"saved to eeprom... reset to boot into new wifi\"}";
           statusCode = 200;
@@ -215,8 +230,8 @@ void createWebServer(int webtype)
     });
     server.on("/setting", []() {
         String qsrvIp = server.arg("srvIp");
+        String qespId = server.arg("espId");
         if (qsrvIp.length()>0) {
-          Serial.println("writing eeprom srvIp:"); 
           //clear contents
           for (int i = srvIpStartPos; i < srvIpStartPos+15; ++i) { EEPROM.write(i, 0); }
           for (int i = 0; i < qsrvIp.length(); ++i)
@@ -224,10 +239,22 @@ void createWebServer(int webtype)
               EEPROM.write(srvIpStartPos+i, qsrvIp[i]);
 
             }   
+          for (int i = espIdStartPos; i < espIdStartPos+3; ++i) { EEPROM.write(i, 0); }
+          for (int i = 0; i < qespId.length(); ++i)
+            {
+              EEPROM.write(espIdStartPos+i, qespId[i]);
+              Serial.print("Wrote: ");
+              Serial.println(qespId[i]); 
+            }
           EEPROM.commit();
-          server.send(20, "application/json", "{\"Success\":\"new srv ip is saved to eeprom... \"}");
+          server.send(200, "application/json", "{\"Success\":\"new srv ip is saved to eeprom... \"}");
         } 
-    });   
+    }); 
+    server.on("/whoareyou", [](){
+        server.send(200, "application/json", "{\"espId\":"+espId+
+                                           ", \"clientId\":"+clientId+
+                                           ", \"clientVersion\":"+clientVer+"}");
+    });
   }
 }
 
@@ -256,8 +283,8 @@ void loop() {
     //Send the keyPressed evt
     String pressedUrl = "/buttonIsPressed";
   
-    Serial.print("Requesting URL: ");
-    Serial.println(url);
+    //Serial.print("Requesting URL: ");
+    //Serial.println(url);
     
     // This will send the request to the server
     client.print(String("GET ") + url + " HTTP/1.1\r\n" +

@@ -57,9 +57,9 @@ void setup() {
     {
       host[i]= char(EEPROM.read(srvIpStartPos+i));
     }
-  //Serial.println("host: "+ String(host));
+  Serial.println("host: "+ String(host));
   espId = espId.substring(0,3);
- // Serial.println("espId: "+espId);
+  Serial.println("espId: "+espId);
     
   
   if ( esid.length() > 1 ) {
@@ -224,7 +224,7 @@ void createWebServer(int webtype)
       content = "<!DOCTYPE HTML>\r\n<html>";
       content += "<p>Clearing the EEPROM</p></html>";
       server.send(200, "text/html", content);
-      Serial.println("clearing eeprom");
+      Serial.println("clearing eeprom");if (qsrvIp.length()>0) {
       for (int i = 0; i < 96; ++i) { EEPROM.write(i, 0); }
       EEPROM.commit();
     });
@@ -241,20 +241,46 @@ void createWebServer(int webtype)
             }   
           for (int i = espIdStartPos; i < espIdStartPos+3; ++i) { EEPROM.write(i, 0); }
           for (int i = 0; i < qespId.length(); ++i)
-            {
               EEPROM.write(espIdStartPos+i, qespId[i]);
-              Serial.print("Wrote: ");
-              Serial.println(qespId[i]); 
+              //Serial.print("Wrote: ");
+              //Serial.println(qespId[i]); 
             }
           EEPROM.commit();
-          server.send(200, "application/json", "{\"Success\":\"new srv ip is saved to eeprom... \"}");
+          server.send(200, "application/json", "{\"success\":\"new srv ip is saved to eeprom... \"}");
         } 
     }); 
+     server.on("/settingp", []() {
+        String qsrvIp = server.arg("srvIp");
+        String qespId = server.arg("espId");
+        if (qsrvIp.length()>0) {
+          //clear contents
+          for (int i = srvIpStartPos; i < srvIpStartPos+15; ++i) { EEPROM.write(i, 0); }
+          for (int i = 0; i < qsrvIp.length(); ++i)
+            {
+              EEPROM.write(srvIpStartPos+i, qsrvIp[i]);
+
+            }   
+          for (int i = espIdStartPos; i < espIdStartPos+3; ++i) { EEPROM.write(i, 0); }
+          for (int i = 0; i < qespId.length(); ++i)
+              EEPROM.write(espIdStartPos+i, qespId[i]);
+              //Serial.print("Wrote: ");
+              //Serial.println(qespId[i]); 
+            }
+          EEPROM.commit();
+          server.send(200, "application/javascript", "jsonCallback({\"success\":\"new srv ip is saved to eeprom... \"});");
+        } 
+    });    
     server.on("/whoareyou", [](){
         server.send(200, "application/json", "{\"espId\":"+espId+
                                            ", \"clientId\":"+clientId+
                                            ", \"clientVersion\":"+clientVer+
                                            ", \"applServer\":\""+String(host)+"\"}");
+    });
+    server.on("/whoareyoup", [](){
+        server.send(200, "application/javascript", "jsonCallback({\"espId\":"+espId+
+                                           ", \"clientId\":"+clientId+
+                                           ", \"clientVersion\":"+clientVer+
+                                           ", \"applServer\":\""+String(host)+"\"});");
     });
   }
 }
